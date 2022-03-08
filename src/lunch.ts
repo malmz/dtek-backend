@@ -1,5 +1,5 @@
 import { dfn, weekly } from '../deps.ts';
-import { getLunchDate } from './date.ts';
+import { getLunchDate, getStartOfWeek } from './date.ts';
 import * as karen from './karen.ts';
 import * as linsen from './linsen.ts';
 
@@ -67,17 +67,24 @@ class LunchProvider {
 
   async cacheAll() {
     console.info('Caching all menus');
+
     for (const [name, resturant] of this.#resturants) {
+      if (!this.needsUpdate(name)) {
+        console.info(`${name} is up to date - skipping`);
+        continue;
+      }
       const fetcher = dfn.isWeekend(new Date())
         ? resturant.nextWeekFetcher
         : resturant.weekFetcher;
       let menu: WeekMenu | undefined;
       console.info(`Fetching ${name}`);
+
       const t1 = performance.now();
       if (fetcher) {
         menu = await fetcher();
       }
       const t2 = performance.now();
+
       console.info(`Fetched ${name} in ${t2 - t1}ms`);
       if (menu) {
         this.#cache.set(name, menu);
@@ -85,7 +92,31 @@ class LunchProvider {
         this.#cache.delete(name);
       }
     }
+    this.save();
     console.info('Done caching all menus');
+  }
+
+  save() {
+    const data = Object.fromEntries(this.#cache);
+    localStorage.setItem('lunch', JSON.stringify(data));
+  }
+
+  load() {
+    const data = localStorage.getItem('lunch');
+    if (data) {
+      const parsed = JSON.parse(data);
+      this.#cache = new Map(Object.entries(parsed));
+    }
+  }
+
+  needsUpdate(name: string): boolean {
+    const date = this.#cache.get(name)?.date;
+    if (date) {
+      const week = getStartOfWeek();
+      return dfn.isAfter(week, date);
+    } else {
+      return true;
+    }
   }
 }
 
@@ -103,6 +134,7 @@ export const lunchProvider = new LunchProvider([
   ['linsen', linsen.createResturant()],
 ]);
 
+//lunchProvider.load();
 await lunchProvider.cacheAll();
 
 weekly(() => {

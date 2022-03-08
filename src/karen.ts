@@ -1,55 +1,35 @@
 import { dfn } from '../deps.ts';
 import { Menu, Resturant, WeekMenu, WeekMenuFetcher } from './lunch.ts';
 
-// BEWARE TRAVAELER! Here be dragons!
-
-// Thank you to IT for figureing this out, it was a big help!
-// https://github.com/cthit/chalmersit-lunch/blob/master/chalmrest.rb
-
-// This site makes graphql requests to a api endpoint
-// http://carbonatescreen.azurewebsites.net/menu/week/johanneberg-express/3d519481-1667-4cad-d2a3-08d558129279
-// We copy that query and we can use other resturant ids found on the site below
-// https://chalmerskonferens.se/en/api/
-
-interface DishOccurrance {
-  dishType: {
-    name: string;
-  };
-  displayNames: [
-    {
-      name: string;
-      sortOrder: number;
-      categoryName: string;
-    }
-  ];
+interface DishOccurrence {
   startDate: string;
+  mealProvidingUnit: { mealProvidingUnitName: string };
+  displayNames: {
+    dishDisplayName: string;
+    displayNameCategory: {
+      displayNameCategoryName: string;
+    };
+  }[];
+  dishType: {
+    dishTypeName: string;
+    dishTypeNameEnglish: string;
+  };
+  dish: {
+    recipes: {
+      allergens: {
+        allergenCode: string;
+        allergenURL: string;
+      }[];
+    }[];
+    dishName: string;
+    totalEmission: number;
+    prices: string;
+  };
 }
 
-const menuQuery = `
-  query MealQuery(
-    $mealProvidingUnitID: String
-    $startDate: String
-    $endDate: String
-  ) {
-    dishOccurrencesByTimeRange(
-      mealProvidingUnitID: $mealProvidingUnitID
-      startDate: $startDate
-      endDate: $endDate
-    ) {
-      displayNames {
-        sortOrder
-        name
-        categoryName
-      }
-      startDate
-      dishType {
-        name
-      }
-    }
-  }
-  `;
-
-const apiUrl = 'https://heimdallprod.azurewebsites.net/graphql';
+const apiUrl =
+  'http://carbonateapiprod.azurewebsites.net/api/v1/mealprovidingunits/';
+//3d519481-1667-4cad-d2a3-08d558129279/dishoccurrences?startDate=2022-03-07&endDate=2022-03-11
 
 function formatDate(date: Date): string {
   return dfn.lightFormat(date, 'yyyy-MM-dd');
@@ -59,73 +39,75 @@ function parseApiDate(date: string): Date {
   return dfn.parse(date, 'M/dd/yyyy hh:mm:ss a', new Date(), {});
 }
 
-export async function fetchWeekeMenu(
+async function fetchApi(
   id: string,
-  date: Date
-): Promise<WeekMenu> {
+  startDate: Date,
+  endDate: Date
+): Promise<DishOccurrence[]> {
+  const url = new URL(`${id}/dishoccurrences`, apiUrl);
+  url.searchParams.set('startDate', formatDate(startDate));
+  url.searchParams.set('endDate', formatDate(endDate));
+
+  const ab = new AbortController();
+  try {
+    const t = setTimeout(() => ab.abort(), 10000);
+    const response = await fetch(url.toString(), {
+      signal: ab.signal,
+    });
+    clearTimeout(t);
+    return await response.json();
+  } catch (error) {
+    throw new Error('Failed to fetch menu', { cause: error });
+  }
+}
+
+async function fetchWeekeMenu(id: string, date: Date): Promise<WeekMenu> {
   const startDate = dfn.startOfWeek(date);
   const endDate = dfn.nextFriday(date);
 
-  const body = {
-    query: menuQuery,
-    variables: {
-      mealProvidingUnitID: id,
-      startDate: formatDate(startDate),
-      endDate: formatDate(endDate),
-    },
-  };
-
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json();
-  const dishOccurrance: DishOccurrance[] = data.data.dishOccurrencesByTimeRange;
-
   const menus = new Map<string, Menu>();
 
-  for (const dish of dishOccurrance) {
+  const data = await fetchApi(id, startDate, endDate);
+
+  for (const dish of data) {
     const date = parseApiDate(dish.startDate);
     const menu = menus.get(date.toJSON()) ?? {
       date,
       dishes: { english: [], swedish: [] },
     };
-    for (const displayNames of dish.displayNames) {
-      if (displayNames.categoryName === 'English') {
+
+    for (const displayName of dish.displayNames) {
+      if (
+        displayName.displayNameCategory.displayNameCategoryName === 'English'
+      ) {
         menu.dishes.english.push({
-          name: displayNames.name,
-          type: dish.dishType.name,
+          name: displayName.dishDisplayName,
+          type: dish.dishType.dishTypeNameEnglish,
         });
-      } else if (displayNames.categoryName === 'Swedish') {
+      } else if (
+        displayName.displayNameCategory.displayNameCategoryName === 'Swedish'
+      ) {
         menu.dishes.swedish.push({
-          name: displayNames.name,
-          type: dish.dishType.name,
+          name: displayName.dishDisplayName,
+          type: dish.dishType.dishTypeName,
         });
       } else {
-        console.log(`Unknown category ${displayNames.categoryName}`);
+        console.error(
+          `Unknown category ${displayName.displayNameCategory.displayNameCategoryName}`
+        );
       }
     }
+
     menus.set(date.toJSON(), menu);
   }
 
   const days = Array.from(menus.values());
 
   return {
-    date: startDate,
+    date,
     days,
   } as WeekMenu;
 }
-
-const idNameMap = new Map<string, string>([
-  ['johanneberg-express', '3d519481-1667-4cad-d2a3-08d558129279'],
-  ['karresturangen', '21f31565-5c2b-4b47-d2a1-08d558129279'],
-  ['hyllan', 'a7f0f75b-c1cb-4fc3-d2a6-08d558129279'],
-  ['smak', '3ac68e11-bcee-425e-d2a8-08d558129279'],
-]);
 
 function createWeekFetcher(id: string, next: boolean): WeekMenuFetcher {
   return async () => {
@@ -133,10 +115,6 @@ function createWeekFetcher(id: string, next: boolean): WeekMenuFetcher {
     const menu = await fetchWeekeMenu(id, start);
     return menu;
   };
-}
-
-export function getId(name: string): string {
-  return idNameMap.get(name) ?? '';
 }
 
 export function createResturant(id: string): Resturant {

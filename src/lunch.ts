@@ -21,6 +21,7 @@ export interface Dishes {
 export interface Dish {
   type?: string;
   name: string;
+  allergen?: string[];
 }
 
 export interface Resturant {
@@ -67,7 +68,7 @@ class LunchProvider {
 
   async cacheAll() {
     console.info('Caching all menus');
-
+    const fetchers: Promise<void>[] = [];
     for (const [name, resturant] of this.#resturants) {
       if (!this.needsUpdate(name)) {
         console.info(`${name} is up to date - skipping`);
@@ -77,21 +78,27 @@ class LunchProvider {
         ? resturant.nextWeekFetcher
         : resturant.weekFetcher;
       let menu: WeekMenu | undefined;
-      console.info(`Fetching ${name}`);
+      fetchers.push(
+        (async () => {
+          console.info(`Fetching ${name}`);
+          try {
+            if (fetcher) {
+              menu = await fetcher();
+            }
+          } catch (error) {
+            console.error(`Failed to fetch ${name}`, error);
+          }
+          console.info(`Done ${name}`);
 
-      const t1 = performance.now();
-      if (fetcher) {
-        menu = await fetcher();
-      }
-      const t2 = performance.now();
-
-      console.info(`Fetched ${name} in ${t2 - t1}ms`);
-      if (menu) {
-        this.#cache.set(name, menu);
-      } else {
-        this.#cache.delete(name);
-      }
+          if (menu) {
+            this.#cache.set(name, menu);
+          } else {
+            this.#cache.delete(name);
+          }
+        })()
+      );
     }
+    await Promise.all(fetchers);
     this.save();
     console.info('Done caching all menus');
   }

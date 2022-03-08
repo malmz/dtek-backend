@@ -99,21 +99,7 @@ class LunchProvider {
       );
     }
     await Promise.all(fetchers);
-    this.save();
     console.info('Done caching all menus');
-  }
-
-  save() {
-    const data = Object.fromEntries(this.#cache);
-    localStorage.setItem('lunch', JSON.stringify(data));
-  }
-
-  load() {
-    const data = localStorage.getItem('lunch');
-    if (data) {
-      const parsed = JSON.parse(data);
-      this.#cache = new Map(Object.entries(parsed));
-    }
   }
 
   needsUpdate(name: string): boolean {
@@ -141,7 +127,6 @@ export const lunchProvider = new LunchProvider([
   ['linsen', linsen.createResturant()],
 ]);
 
-//lunchProvider.load();
 await lunchProvider.cacheAll();
 
 weekly(() => {

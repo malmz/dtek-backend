@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "qufiwefefwoyn.inline-sql-syntax",
+    "denoland.vscode-deno",
+    "mikestead.dotenv",
+    "editorconfig.editorconfig",
+    "esbenp.prettier-vscode",
+    "christian-kohler.path-intellisense",
+    "visualstudioexptteam.vscodeintellicode",
+    "eamodio.gitlens"
+  ]
+}

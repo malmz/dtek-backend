@@ -1,5 +1,8 @@
 import { Application, logger, oakCors, Status } from './deps.ts';
+import { db } from './src/db.ts';
 import { router } from './src/router.ts';
+
+await db.init();
 
 const app = new Application();
 app.use(logger.logger);
@@ -10,6 +13,7 @@ app.use(async (ctx, next) => {
   try {
     await next();
   } catch (error) {
+    console.error(error);
     ctx.response.status = Status.InternalServerError;
     ctx.response.body = error.message;
   }

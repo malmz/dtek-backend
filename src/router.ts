@@ -1,6 +1,7 @@
 import { getQuery, Router, Status } from '../deps.ts';
-import { fetchNews } from '../news.ts';
+import { db } from './db.ts';
 import { lunchProvider } from './lunch.ts';
+import { News } from './news.ts';
 
 export const router = new Router();
 router.get('/', (ctx) => {
@@ -15,6 +16,7 @@ router.get('/lunch', (ctx) => {
   } else {
     try {
       const lunch = lunchProvider.getTodaysMenu(name, setlang);
+      ctx.response.type = 'application/json';
       ctx.response.body = JSON.stringify(lunch);
     } catch (error) {
       ctx.response.status = Status.NotFound;
@@ -24,6 +26,13 @@ router.get('/lunch', (ctx) => {
 });
 
 router.get('/news', async (ctx) => {
-  const news = await fetchNews();
+  const news = await db.fetchNews();
+  ctx.response.type = 'application/json';
   ctx.response.body = JSON.stringify(news);
+});
+
+router.post('/news', async (ctx) => {
+  const news = (await ctx.request.body({ type: 'json' }).value) as News;
+  await db.createNews(news);
+  ctx.response.status = Status.Created;
 });

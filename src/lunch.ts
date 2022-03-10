@@ -21,7 +21,8 @@ export interface Dishes {
 export interface Dish {
   type?: string;
   name: string;
-  allergen?: string[];
+  allergens?: string[];
+  emmissions?: number;
 }
 
 export interface Resturant {

@@ -29,7 +29,6 @@ interface DishOccurrence {
 
 const apiUrl =
   'http://carbonateapiprod.azurewebsites.net/api/v1/mealprovidingunits/';
-//3d519481-1667-4cad-d2a3-08d558129279/dishoccurrences?startDate=2022-03-07&endDate=2022-03-11
 
 function formatDate(date: Date): string {
   return dfn.lightFormat(date, 'yyyy-MM-dd');
@@ -83,6 +82,8 @@ async function fetchWeekeMenu(id: string, date: Date): Promise<WeekMenu> {
         menu.dishes.english.push({
           name: displayName.dishDisplayName,
           type: dish.dishType.dishTypeNameEnglish,
+          allergens: dish.dish.recipes[0].allergens.map((a) => a.allergenCode),
+          emmissions: dish.dish.totalEmission,
         });
       } else if (
         displayName.displayNameCategory.displayNameCategoryName === 'Swedish'
@@ -90,6 +91,8 @@ async function fetchWeekeMenu(id: string, date: Date): Promise<WeekMenu> {
         menu.dishes.swedish.push({
           name: displayName.dishDisplayName,
           type: dish.dishType.dishTypeName,
+          allergens: dish.dish.recipes[0].allergens.map((a) => a.allergenCode),
+          emmissions: dish.dish.totalEmission,
         });
       } else {
         console.error(

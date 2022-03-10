@@ -1,7 +1,9 @@
 import { dotenv, pg } from '../deps.ts';
 import { News } from './news.ts';
 
-dotenv.config({ export: true });
+if (Deno.env.get('DENO_LOCAL') === 'true') {
+  dotenv.config({ export: true });
+}
 
 const globalPool = new pg.Pool(
   {

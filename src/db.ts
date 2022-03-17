@@ -1,13 +1,32 @@
 import { dotenv, pg } from '../deps.ts';
 import { News } from './news.ts';
 
-if (Deno.env.get('DENO_LOCAL') === 'true') {
-  dotenv.config({ export: true });
+interface Config {
+  user: string;
+  password: string;
+  host: string;
+  port: number;
+  database: string;
 }
+
+async function loadConfig(): Promise<Config | undefined> {
+  try {
+    const conf = await Deno.readTextFile(
+      new URL('../db.config.json', import.meta.url)
+    );
+    return JSON.parse(conf);
+  } catch (_error) {
+    console.log('Could not load db.config.json, fallback to ENV');
+  }
+}
+
+const config = await loadConfig();
 
 const globalPool = new pg.Pool(
   {
+    ...config,
     tls: {
+      enabled: true,
       caCertificates: [
         await Deno.readTextFile(
           new URL('../prod-ca-2021.crt', import.meta.url)

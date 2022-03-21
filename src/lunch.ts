@@ -85,21 +85,20 @@ class LunchProvider {
           try {
             if (fetcher) {
               menu = await fetcher();
+              this.#cache.set(name, menu);
             }
+            console.info(`Done ${name}`);
           } catch (error) {
-            console.error(`Failed to fetch ${name}`, error);
-          }
-          console.info(`Done ${name}`);
-
-          if (menu) {
-            this.#cache.set(name, menu);
-          } else {
+            console.error(
+              `Failed to fetch ${name}`,
+              (error as Error).cause.message
+            );
             this.#cache.delete(name);
           }
         })()
       );
     }
-    await Promise.all(fetchers);
+    await Promise.allSettled(fetchers);
     console.info('Done caching all menus');
   }
 

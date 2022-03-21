@@ -20,9 +20,15 @@ function convertMenu(menu: lpe.WeekMenu): WeekMenu {
 
 function createWeekFetcher(): WeekMenuFetcher {
   return async () => {
+    const ab = new AbortController();
+    const t = setTimeout(() => ab.abort(), 20000);
     const response = await fetch(
-      'http://www.cafelinsen.se/menyer/cafe-linsen-lunch-meny.pdf'
+      'http://www.cafelinsen.se/menyer/cafe-linsen-lunch-meny.pdf',
+      {
+        signal: ab.signal,
+      }
     );
+    clearTimeout(t);
     const data = await response.arrayBuffer();
     const doc = lpe.extract_pdf(new Uint8Array(data));
     return convertMenu(doc);

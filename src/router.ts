@@ -3,11 +3,10 @@ import { db } from './db.ts';
 import { lunchProvider } from './lunch.ts';
 import { News } from './news.ts';
 
-export const router = new Router();
-router.get('/', (ctx) => {
-  ctx.response.body = 'Hello World!';
-});
-router.get('/lunch', (ctx) => {
+export { auth } from './ory_proxy.ts';
+
+export const api = new Router({ prefix: '/api' });
+api.get('/lunch', (ctx) => {
   const { name, lang } = getQuery(ctx);
   const setlang = lang ?? 'Swedish';
   if (!(setlang === 'Swedish' || setlang === 'English')) {
@@ -25,13 +24,13 @@ router.get('/lunch', (ctx) => {
   }
 });
 
-router.get('/news', async (ctx) => {
+api.get('/news', async (ctx) => {
   const news = await db.fetchNews();
   ctx.response.type = 'application/json';
   ctx.response.body = JSON.stringify(news);
 });
 
-router.post('/news', async (ctx) => {
+api.post('/news', async (ctx) => {
   const news = (await ctx.request.body({ type: 'json' }).value) as News;
   await db.createNews(news);
   ctx.response.status = Status.Created;

@@ -6,9 +6,12 @@ export {
   Router,
   helpers,
   Status,
+  proxy,
 } from 'https://deno.land/x/oak@v10.4.0/mod.ts';
 export { oakCors } from 'https://deno.land/x/cors@v1.2.2/mod.ts';
 export { default as logger } from 'https://deno.land/x/oak_logger@1.0.0/mod.ts';
 export { getQuery } from 'https://deno.land/x/oak@v10.4.0/helpers.ts';
 export * as pg from 'https://deno.land/x/postgres@v0.15.0/mod.ts';
 export * as dotenv from 'https://deno.land/x/dotenv@v3.2.0/mod.ts';
+export type { Cookie } from 'https://deno.land/std@0.130.0/http/cookie.ts';
+export { setCookie } from 'https://deno.land/std@0.130.0/http/cookie.ts';

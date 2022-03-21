@@ -49,7 +49,7 @@ async function fetchApi(
 
   const ab = new AbortController();
   try {
-    const t = setTimeout(() => ab.abort(), 10000);
+    const t = setTimeout(() => ab.abort(), 20000);
     const response = await fetch(url.toString(), {
       signal: ab.signal,
     });

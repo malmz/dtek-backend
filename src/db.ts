@@ -14,6 +14,7 @@ async function loadConfig(): Promise<Config | undefined> {
     const conf = await Deno.readTextFile(
       new URL('../db.config.json', import.meta.url)
     );
+    console.log('Config loaded');
     return JSON.parse(conf);
   } catch (_error) {
     console.log('Could not load db.config.json, fallback to ENV');
@@ -24,7 +25,7 @@ const config = await loadConfig();
 
 const globalPool = new pg.Pool(
   {
-    ...config,
+    applicationName: 'Dtek backend',
     tls: {
       enabled: true,
       caCertificates: [
@@ -33,6 +34,7 @@ const globalPool = new pg.Pool(
         ),
       ],
     },
+    ...config,
   },
   3,
   true
@@ -69,7 +71,6 @@ export class Db {
 
     try {
       const result = await conn.queryObject<News>`SELECT * FROM posts`;
-      console.log('result', result.rows);
 
       return result.rows;
     } finally {

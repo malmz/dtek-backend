@@ -1,13 +1,18 @@
 import { Application, logger, oakCors, Status } from './deps.ts';
 import { db } from './src/db.ts';
-import { router } from './src/router.ts';
+import { api, auth } from './src/router.ts';
 
 await db.init();
 
 const app = new Application();
 app.use(logger.logger);
 app.use(logger.responseTime);
-app.use(oakCors());
+app.use(
+  oakCors({
+    origin: 'http://localhost:3000',
+    credentials: true,
+  })
+);
 
 app.use(async (ctx, next) => {
   try {
@@ -19,8 +24,23 @@ app.use(async (ctx, next) => {
   }
 });
 
-app.use(router.routes());
-app.use(router.allowedMethods());
+app.use(api.routes());
+app.use(api.allowedMethods());
 
-console.log('Server running on http://localhost:3001');
+app.use(auth.routes());
+app.use(auth.allowedMethods());
+
+app.use((ctx) => {
+  // Auth Proxy calls next even when matching route is not found
+  if (!ctx.request.url.pathname.startsWith('/auth')) {
+    ctx.response.status = Status.NotFound;
+    ctx.response.body = 'Not found';
+  }
+});
+
+app.addEventListener('listen', (info) => {
+  const proto = info.secure ? 'https' : 'http';
+  console.log(`Server running on ${proto}://${info.hostname}:${info.port}`);
+});
+
 await app.listen({ port: 3001 });
